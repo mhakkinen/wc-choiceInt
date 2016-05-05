@@ -1,0 +1,59 @@
+.qti-itemBody {
+	font-family: arial, helvetica, sans-serif;
+	font-size: medium;	
+	margin-top: 4em;
+	display: block;
+	margin-left: auto;
+	margin-right: auto;
+	width: 90%;
+	padding: 1em;
+	/* float: left; */	
+	z-index: 0;
+}
+
+.qti-prompt {
+	font-weight: bold;
+	background-color: #000000;
+	color: #FFFFFF;
+	padding: 0.3em;
+	width: 50%;}
+}
+
+.qti-choiceInteraction {
+	padding: 2em;
+}
+
+.qti-simpleChoice {
+	margin-bottom: 10px;	
+}
+
+.horizontal {
+	float: left;
+	margin-right: 7px;
+}
+ 
+.unchecked {
+    width: 30px;
+    height: 15px;
+    border: 1px solid #000000;
+    margin-top: 2px;
+    background-color: #ffffff;
+    -moz-border-radius: 100px / 50px;
+    -webkit-border-radius: 100px / 50px;
+    border-radius: 100px / 50px;
+	float: left;
+	margin-right: 7px; 
+}
+.checked {
+    width: 30px;
+    height: 15px;
+    border: 1px solid #000000;
+    margin-top: 2px;
+    background-color: #676767;
+    -moz-border-radius: 100px / 50px;
+    -webkit-border-radius: 100px / 50px;
+    border-radius: 100px / 50px;
+	float: left;
+	margin-right: 7px; 
+}
+

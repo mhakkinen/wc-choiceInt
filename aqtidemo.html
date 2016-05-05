@@ -1,0 +1,412 @@
+<!DOCTYPE html>
+<html lang="en" xmlns="http://www.w3.org/1999/xhtml">
+<head>
+  <meta charset="utf-8" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>ETS aQTI Choice Interaction</title>  
+  <!-- web component stuff here -->
+  <script src="poly1.0/components/bower_components/webcomponentsjs/webcomponents.min.js"></script>
+  <link rel="import" href="poly1.0/components/bower_components/polymer/polymer.html" />    
+</head>
+<body>
+<dom-module id="qti-itemBody">
+  <link rel="import" type="css" href="./css/qti-choiceInteraction.css">
+  <template>
+	<div>
+		<content></content>
+	</div>
+  </template>
+  <script>
+    Polymer({
+      is: 'qti-itemBody'
+      //properties: {
+	    // Not sure what this is.
+	    //starred: Boolean
+      //}
+    });
+  </script>
+</dom-module>
+
+<dom-module id="qti-choiceInteraction">
+  <link rel="import" type="css" href="./css/qti-choiceInteraction.css">
+  <template>
+  <div role="region" aria-roledescription="Multiple Choice">
+    <content></content>
+  </div>
+  </template>
+  <script>
+    Polymer({
+      is: 'qti-choiceInteraction',
+      properties: {
+        shuffle: Boolean,
+		responseIdentifier: String,
+		maxChoices: Number,
+		minChoices: Number,
+		// Values: "vertical" or "horizontal"
+		orientation: String
+      },
+	  shuffle: function(array) {
+		var m = array.length, t, i;
+		while (m > 0) 
+		{
+			i = Math.floor(Math.random() * m--);
+			t = array[m];
+			array[m] = array[i];
+			array[i] = t;
+		}
+		return array;
+	  },
+	  ready: function() {
+		// What is the orientation?
+		if (this.hasAttribute("orientation")) {
+			var o = this.getAttribute("orientation");
+			if (o == "horizontal") {
+				for (i = 0; i < this.childNodes.length; i++) {
+					c = this.childNodes[i];
+					if (c.nodeName == "DIV") {
+						for (x = 0; x < c.childNodes.length; x++) {
+							n = c.childNodes[x];
+							if (n.nodeName == "QTI-SIMPLECHOICE") {
+								n.setAttribute("class", "style-scope qti-simpleChoice horizontal");
+							}
+						}
+					}
+				}
+			}
+		}
+		// If shuffle is on, shuffle the choices.
+		if (this.hasAttribute("shuffle")) {		
+			var s = this.getAttribute("shuffle");
+			if (s == "true") {
+				var sc = document.getElementsByTagName("qti-simpleChoice");
+				var total_choices = sc.length;
+				var ci_node = document.getElementsByTagName("qti-choiceInteraction")[0].getElementsByTagName("div")[0];
+				var choices = [];
+				var fixed_obj = [];
+				var fixed_pos = [];
+				// Grab all the choices that are fixed. Save the identifier and the original position/index.
+				for (f = 0; f < sc.length; f++) {
+					if ( sc[f].hasAttribute("fixed") && (sc[f].getAttribute("fixed") == "true") ) {
+						fixed_obj.push(sc[f]);
+						fixed_pos.push(f);
+					}
+				}
+				// Grab all the non-fixed choices.
+				sc = document.getElementsByTagName("qti-simpleChoice");
+				for (i = 0; i < sc.length; i++) {
+					if (sc[i].hasAttribute("fixed")) {
+						if (sc[i].getAttribute("fixed") == "false") {
+							choices.push(sc[i]);
+						}
+					}
+					else {
+						choices.push(sc[i]);
+					}
+				}
+				// Shuffle all the non-fixed choices.
+				this.shuffle(choices);			
+				// Remove all the qti-simpleChoice nodes.
+				for (x = 0; x < ci_node.childNodes.length; x++) {
+					var c = ci_node.childNodes[x];
+					if (c.nodeName == "QTI-SIMPLECHOICE") {
+						ci_node.removeChild(c);
+					}
+				}			
+				// Add the choices in the new order.
+				for (y = 0; y < choices.length; y++) {
+					ci_node.appendChild(choices[y]);
+				}
+				// Now add the fixed choices.
+				// Loop through all the choices in the fixed choices array.
+				for (z = 0; z < fixed_obj.length; z++) {
+					// Grab the latest and greatest list of options.
+					var nc = document.getElementsByTagName("qti-simpleChoice");
+					// Grab the static position for the fixed option.
+					var fpos = fixed_pos[z];
+					// If the static position is 0, insert the fixed option before the current first option.
+					if (fpos == 0) {
+						ci_node.insertBefore(fixed_obj[z], nc[0]);
+					}
+					// Otherwise...
+					else {
+						// If the static position is last, append the fixed option to the bottom of the current options list.
+						if (fpos == (total_choices - 1)) {
+							ci_node.appendChild(fixed_obj[z]);
+						}
+						// Otherwise, insert the fixed option at its appropriate position in the current options list.
+						else {
+							ci_node.insertBefore(fixed_obj[z], nc[fpos]);						
+						}
+					}
+				}
+			}
+		}		
+	  }	  
+    });
+  </script>
+</dom-module>
+
+<dom-module id="qti-prompt">
+  <link rel="import" type="css" href="./css/qti-choiceInteraction.css">
+  <template>
+	<p aria-roledescription="Question">
+		<content></content>
+    </p>
+  </template>
+  <script>
+    Polymer({
+      is: 'qti-prompt'
+    });
+  </script>
+</dom-module>
+
+<dom-module id="qti-submit">
+  <link rel="import" type="css" href="./css/qti-choiceInteraction.css">
+  <template>
+	<button type="submit">Submit Response</button>
+  </template>
+  <script>
+    Polymer({
+      is: 'qti-submit',
+	  listeners: {
+		"click": "handleClick",
+		"keydown" : "handleKeyDown",
+		"keypress" : "handleKeyPress"
+	  },
+	  submitResponse: function(e) {
+		// What is the minimum and maximum number of choices?
+		var minChoices = parseInt(this.previousElementSibling.getAttribute("minchoices"));
+		var maxChoices = parseInt(this.previousElementSibling.getAttribute("maxchoices"));
+		// If the minimum is greater than the maximum, throw an error.
+		if (minChoices > maxChoices) {
+			alert("Minimum number of required responses must be less than or equal to the maximum number of responses.");
+			return;
+		}
+		if (minChoices > 0) {
+			// How many selections have been made?
+			var numSelected = 0;		
+			var sc = document.getElementsByTagName("qti-simpleChoice");
+			for (i = 0; i < sc.length; i++) {
+				if (sc[i].getAttribute("aria-checked") == "true") {
+					numSelected += 1;
+				}
+			}
+			if (numSelected < minChoices) {
+				alert("You must select " + minChoices + " option(s).")
+				return;
+			}	
+		}
+		alert("Minimum number of responses has been met.")
+	  },
+	  handleKeyPress: function(e) {
+		if (e.altKey) { 
+			// do nothing 
+			return true; 
+		}    
+		switch (e.keyCode) {
+			// enter
+			case 13: { 
+				if (e.ctrlKey || e.shiftKey) { 
+				  // do nothing 
+				  return true; 
+				}
+				break;
+			}			
+		}
+		return true; 
+	  },
+	  handleKeyDown: function(e) {
+		if (e.altKey || e.ctrlKey || e.shiftKey) {
+			// do nothing 
+			return true;
+		}
+		switch (e.keyCode) {
+			// enter
+			case 13: {
+				this.submitResponse();
+				e.stopPropagation();
+				return false;
+				break;
+			}			
+		}
+		return true;    
+	  },
+      handleClick: function(e) {
+		this.submitResponse();
+        e.stopPropagation();
+        return false;      
+      }
+    });
+  </script>
+</dom-module>
+
+<dom-module id="qti-simpleChoice">
+  <link rel="import" type="css" href="./css/qti-choiceInteraction.css">
+  <template>
+	<div aria-roledescription="choice" id="{{identifier}}">
+		<div class="unchecked style-scope qti-simpleChoice"></div>
+			<span>
+				<content></content>
+			</span>
+	</div>
+  </template>
+  <script>
+    Polymer({
+      is: 'qti-simpleChoice',
+      properties: {
+        identifier: String,
+        fixed: Boolean
+      },
+	  hostAttributes: {
+          role: "checkbox",
+		  "aria-checked": "false",
+          tabindex: 0
+      },
+	  listeners: {
+		"click": "handleClick",
+		"keydown" : "handleKeyDown",
+		"keypress" : "handleKeyPress"
+	  },
+	  toggleState: function(e) {
+	    // Is this option checked?
+		var isChecked = this.getAttribute("aria-checked");
+		// What is the maximum number of choices?
+		var maxChoices = parseInt(this.parentNode.parentNode.getAttribute("maxchoices"));		
+		// How many options are currently selected?
+		var numSelected = 0;		
+		var sc = document.getElementsByTagName("qti-simpleChoice");
+		for (i = 0; i < sc.length; i++) {
+			if (sc[i].getAttribute("aria-checked") == "true") {
+				numSelected += 1;
+			}
+		}	
+        // Toggle the state of this choice.
+		// If option has been selected, de-select it.
+		if (isChecked == "true") {
+			this.setAttribute("aria-checked", "false");
+			var myimg = this.firstElementChild.firstElementChild;
+			myimg.setAttribute("class", "unchecked style-scope qti-simpleChoice");
+        }
+		// If the option has not been selected...
+        else {
+		    // If the maximum number of choices is 1...
+			if (maxChoices == 1) {
+				// De-select all other options.
+				var mylist = document.getElementsByTagName ('qti-simpleChoice');
+				for (i = 0; i < mylist.length; i++) {
+					mylist[i].setAttribute("aria-checked", "false");
+					var myimg = mylist[i].firstElementChild.firstElementChild;
+					myimg.setAttribute("class", "unchecked style-scope qti-simpleChoice");
+				}
+				// Now select this one.
+				this.setAttribute("aria-checked", "true");
+				var myimg = this.firstElementChild.firstElementChild;
+				myimg.setAttribute("class", "checked style-scope qti-simpleChoice");
+			}
+			// If the maximum number of choices is 0 or if the maximum number of choices has not already been made...
+			else {
+				// Go ahead and select this one.
+				if ((maxChoices == 0) || (numSelected < maxChoices)) {
+					this.setAttribute("aria-checked", "true");
+					var myimg = this.firstElementChild.firstElementChild;
+					myimg.setAttribute("class", "checked style-scope qti-simpleChoice");
+				}
+			}		    
+        }
+	  },
+	  handleKeyPress: function(e) {
+		if (e.altKey) { 
+			// do nothing 
+			return true; 
+		}    
+		switch (e.keyCode) {
+			// space
+			case 32: {          
+				// consume the event 
+				e.stopPropagation();
+				return false;
+				break;
+			}
+			case 37: 	//left
+			case 38:	//up
+			case 39:	//right
+			case 40: {	//down
+				if (e.shiftKey) { 
+					// do nothing 
+					return true; 
+				} 
+				e.stopPropagation(); 
+				return false; 
+				break;
+			}
+		}
+		return true; 
+	  },
+	  handleKeyDown: function(e) {	
+		if (e.altKey || e.ctrlKey || e.shiftKey) {
+			// do nothing 
+			return true;
+		}
+		switch (e.keyCode) {
+			// space
+			case 32: {
+				// toggle the checkbox state 
+				this.toggleState();
+				e.stopPropagation();
+				return false;
+				break;
+			}
+			// left arrow or up arrow
+			case 37:
+			case 38: {
+				// get previous option and give it focus.
+				var prev = this.previousElementSibling;
+				if ((prev != undefined) && (prev.nodeType == 1)) {
+					prev.focus();
+				}
+				e.stopPropagation();
+				return false;
+				break;
+			}
+			// right arrow or down arrow
+			case 39:
+			case 40: {
+				// get next option and give it focus.				
+				var next = this.nextElementSibling;
+				if ((next != undefined) && (next.nodeType == 1)) {
+					next.focus();
+				}		
+				e.stopPropagation();
+				return false;
+				break;
+			}
+		}
+		return true;    
+	  },
+      handleClick: function(e) {
+		this.toggleState();
+        e.stopPropagation();
+        return false;      
+      }	  
+    });
+  </script>
+</dom-module>
+
+<qti-itemBody>
+	<p>Look at the picture of a sign found in Japan.</p>
+	<p><img src="images/sign.png" width="25%" alt="Person running toward circular shape."/></p>
+		
+	<qti-choiceInteraction responseIdentifier="RESPONSE" shuffle="true" maxChoices="1" minChoices="1" orientation="vertical">
+		<qti-prompt>What does it indicate to you?</qti-prompt>
+		<qti-simpleChoice identifier="ChoiceA">You have reached a safety point.</qti-simpleChoice>
+		<qti-simpleChoice identifier="ChoiceB" fixed="false">Watch out for open manhole covers.</qti-simpleChoice>		
+		<qti-simpleChoice identifier="ChoiceC">Watch out for puddles of water.</qti-simpleChoice>		
+		<qti-simpleChoice identifier="ChoiceD" fixed="true">None of the above.</qti-simpleChoice>
+	</qti-choiceInteraction>
+	<qti-submit></qti-submit>
+</qti-itemBody>
+
+</body>
+</html>
